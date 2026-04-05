@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/expense.dart';
 import 'add_expense_screen.dart';
+import 'add_category_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,13 +13,27 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Expense> expenses = [];
 
+  List<String> categories = [
+    "Comida",
+    "Transporte",
+    "Entretenimiento"
+  ];
+
   double get total {
-    return expenses.fold(0, (sum, item) => sum - item.amount);
+    return expenses.fold(0, (sum, item) {
+      return item.isIncome ? sum + item.amount : sum - item.amount;
+    });
   }
 
   void addExpense(Expense expense) {
     setState(() {
       expenses.add(expense);
+    });
+  }
+
+  void addCategory(String category) {
+    setState(() {
+      categories.add(category);
     });
   }
 
@@ -49,9 +64,18 @@ class _HomeScreenState extends State<HomeScreen> {
               itemCount: expenses.length,
               itemBuilder: (context, index) {
                 final expense = expenses[index];
+
                 return ListTile(
                   title: Text(expense.category),
-                  trailing: Text("- \$${expense.amount}"),
+                  trailing: Text(
+                    "${expense.isIncome ? '+' : '-'} \$${expense.amount}",
+                    style: TextStyle(
+                      color: expense.isIncome
+                          ? Colors.green
+                          : Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 );
               },
             ),
@@ -59,11 +83,10 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
 
-      // 👇 AQUÍ ESTÁ LA MAGIA (2 BOTONES)
       floatingActionButton: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // 🔘 Botón izquierdo (menú)
+          // 🔘 BOTÓN MENÚ
           Padding(
             padding: const EdgeInsets.only(left: 30),
             child: FloatingActionButton(
@@ -79,9 +102,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         ListTile(
                           leading: const Icon(Icons.category),
                           title: const Text("Agregar categoría"),
-                          onTap: () {
+                          onTap: () async {
                             Navigator.pop(context);
-                            print("Agregar categoría");
+
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const AddCategoryScreen(),
+                              ),
+                            );
+
+                            if (result != null) {
+                              addCategory(result);
+                            }
                           },
                         ),
                         ListTile(
@@ -89,7 +123,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           title: const Text("Agregar cuenta"),
                           onTap: () {
                             Navigator.pop(context);
-                            print("Agregar cuenta");
                           },
                         ),
                       ],
@@ -101,14 +134,15 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // ➕ Botón derecho (agregar gasto)
+          // ➕ BOTÓN AGREGAR
           FloatingActionButton(
             heroTag: "add",
             onPressed: () async {
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const AddExpenseScreen(),
+                  builder: (context) =>
+                      AddExpenseScreen(categories: categories),
                 ),
               );
 
