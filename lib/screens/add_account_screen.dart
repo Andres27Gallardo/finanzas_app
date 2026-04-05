@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-class AddCategoryScreen extends StatefulWidget {
-  const AddCategoryScreen({super.key});
+class AddAccountScreen extends StatefulWidget {
+  const AddAccountScreen({super.key});
 
   @override
-  State<AddCategoryScreen> createState() => _AddCategoryScreenState();
+  State<AddAccountScreen> createState() => _AddAccountScreenState();
 }
 
-class _AddCategoryScreenState extends State<AddCategoryScreen> {
+class _AddAccountScreenState extends State<AddAccountScreen> {
   final TextEditingController controller = TextEditingController();
 
   void save() {
@@ -18,7 +18,7 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Nueva categoría")),
+      appBar: AppBar(title: const Text("Nueva cuenta")),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -26,7 +26,7 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
             TextField(
               controller: controller,
               decoration: const InputDecoration(
-                labelText: "Categoría",
+                labelText: "Cuenta",
                 border: OutlineInputBorder(),
               ),
             ),

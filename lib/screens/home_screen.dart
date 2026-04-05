@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../models/expense.dart';
-import 'add_expense_screen.dart';
+import '../models/transaction.dart';
+import 'add_transaction_screen.dart';
 import 'add_category_screen.dart';
+import 'add_account_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,70 +12,67 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<Expense> expenses = [];
+  List<TransactionModel> transactions = [];
 
-  List<String> categories = [
-    "Comida",
-    "Transporte",
-    "Entretenimiento"
-  ];
+  List<String> expenseCategories = ["Comida", "Transporte"];
+  List<String> incomeCategories = ["Salario", "Regalo"];
+  List<String> accounts = ["Efectivo", "Banco"];
 
   double get total {
-    return expenses.fold(0, (sum, item) {
-      return item.isIncome ? sum + item.amount : sum - item.amount;
+    return transactions.fold(0, (sum, t) {
+      return t.isIncome ? sum + t.amount : sum - t.amount;
     });
   }
 
-  void addExpense(Expense expense) {
+  void addTransaction(TransactionModel tx) {
     setState(() {
-      expenses.add(expense);
+      transactions.add(tx);
     });
   }
 
-  void addCategory(String category) {
+  void addCategory(String name, bool isIncome) {
     setState(() {
-      categories.add(category);
+      if (isIncome) {
+        incomeCategories.add(name);
+      } else {
+        expenseCategories.add(name);
+      }
+    });
+  }
+
+  void addAccount(String acc) {
+    setState(() {
+      accounts.add(acc);
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Mis Finanzas 💰"),
-      ),
+      appBar: AppBar(title: const Text("Mis Finanzas 💰")),
       body: Column(
         children: [
           const SizedBox(height: 20),
 
-          const Text(
-            "Saldo total",
-            style: TextStyle(fontSize: 18),
-          ),
-
           Text(
             "\$${total.toStringAsFixed(2)}",
-            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 32),
           ),
-
-          const SizedBox(height: 20),
 
           Expanded(
             child: ListView.builder(
-              itemCount: expenses.length,
-              itemBuilder: (context, index) {
-                final expense = expenses[index];
+              itemCount: transactions.length,
+              itemBuilder: (context, i) {
+                final t = transactions[i];
 
                 return ListTile(
-                  title: Text(expense.category),
+                  title: Text("${t.category} (${t.account})"),
+                  subtitle: Text(t.description),
                   trailing: Text(
-                    "${expense.isIncome ? '+' : '-'} \$${expense.amount}",
+                    "${t.isIncome ? '+' : '-'} \$${t.amount}",
                     style: TextStyle(
-                      color: expense.isIncome
-                          ? Colors.green
-                          : Colors.red,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        color:
+                            t.isIncome ? Colors.green : Colors.red),
                   ),
                 );
               },
@@ -83,72 +81,83 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
 
-      floatingActionButton: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          // 🔘 BOTÓN MENÚ
-          Padding(
-            padding: const EdgeInsets.only(left: 30),
-            child: FloatingActionButton(
-              heroTag: "menu",
-              backgroundColor: Colors.grey,
-              onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  builder: (context) {
-                    return Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ListTile(
-                          leading: const Icon(Icons.category),
-                          title: const Text("Agregar categoría"),
-                          onTap: () async {
-                            Navigator.pop(context);
-
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const AddCategoryScreen(),
-                              ),
-                            );
-
-                            if (result != null) {
-                              addCategory(result);
-                            }
-                          },
-                        ),
-                        ListTile(
-                          leading: const Icon(Icons.account_balance),
-                          title: const Text("Agregar cuenta"),
-                          onTap: () {
-                            Navigator.pop(context);
-                          },
-                        ),
-                      ],
-                    );
-                  },
-                );
-              },
-              child: const Icon(Icons.menu),
-            ),
+          FloatingActionButton(
+            heroTag: "menu",
+            backgroundColor: Colors.grey,
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                builder: (context) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ListTile(
+                        title: const Text("Agregar categoría egreso"),
+                        onTap: () async {
+                          Navigator.pop(context);
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    const AddCategoryScreen()),
+                          );
+                          if (result != null) addCategory(result, false);
+                        },
+                      ),
+                      ListTile(
+                        title: const Text("Agregar categoría ingreso"),
+                        onTap: () async {
+                          Navigator.pop(context);
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    const AddCategoryScreen()),
+                          );
+                          if (result != null) addCategory(result, true);
+                        },
+                      ),
+                      ListTile(
+                        title: const Text("Agregar cuenta"),
+                        onTap: () async {
+                          Navigator.pop(context);
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    const AddAccountScreen()),
+                          );
+                          if (result != null) addAccount(result);
+                        },
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+            child: const Icon(Icons.menu),
           ),
 
-          // ➕ BOTÓN AGREGAR
+          const SizedBox(height: 10),
+
           FloatingActionButton(
             heroTag: "add",
             onPressed: () async {
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) =>
-                      AddExpenseScreen(categories: categories),
+                  builder: (_) => AddTransactionScreen(
+                    incomeCategories: incomeCategories,
+                    expenseCategories: expenseCategories,
+                    accounts: accounts,
+                  ),
                 ),
               );
 
-              if (result != null) {
-                addExpense(result);
-              }
+              if (result != null) addTransaction(result);
             },
             child: const Icon(Icons.add),
           ),
