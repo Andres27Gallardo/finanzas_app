@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import '../models/expense.dart';
 
 class AddExpenseScreen extends StatefulWidget {
-  final List<String> expenseCategories;
   final List<String> incomeCategories;
+  final List<String> expenseCategories;
   final List<String> accounts;
 
   const AddExpenseScreen({
     super.key,
-    required this.expenseCategories,
     required this.incomeCategories,
+    required this.expenseCategories,
     required this.accounts,
   });
 
@@ -18,102 +18,80 @@ class AddExpenseScreen extends StatefulWidget {
 }
 
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
-  final amountController = TextEditingController();
-  final descriptionController = TextEditingController();
+  final TextEditingController amountController = TextEditingController();
+  final TextEditingController descriptionController = TextEditingController();
 
-  String type = "gasto";
+  String type = "egreso";
   String? selectedCategory;
-  String? selectedAccount;
+  String? fromAccount;
+  String? toAccount;
 
-  DateTime selectedDateTime = DateTime.now();
+  DateTime selectedDate = DateTime.now();
 
-  List<String> get currentCategories {
-    return type == "ingreso"
-        ? widget.incomeCategories
-        : widget.expenseCategories;
-  }
+  void saveExpense() {
+    final double? amount = double.tryParse(amountController.text);
 
-  @override
-  void initState() {
-    super.initState();
-    selectedAccount = widget.accounts.first;
-    selectedCategory = currentCategories.first;
-  }
+    if (amount == null) return;
 
-  void save() {
-    final amount = double.tryParse(amountController.text);
-    if (amount == null || selectedCategory == null) return;
+    if (type == "transferencia") {
+      if (fromAccount == null || toAccount == null) return;
 
-    Navigator.pop(
-      context,
-      Expense(
-        category: selectedCategory!,
+      final expense = Expense(
         amount: amount,
+        category: "Transferencia",
         description: descriptionController.text,
-        account: selectedAccount!,
-        type: type,
-        date: selectedDateTime,
-      ),
-    );
-  }
-
-  Future<void> pickDateTime() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: selectedDateTime,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-    );
-
-    if (date == null) return;
-
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(selectedDateTime),
-    );
-
-    if (time == null) return;
-
-    setState(() {
-      selectedDateTime = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        time.hour,
-        time.minute,
+        type: "transferencia",
+        account: fromAccount!,
+        toAccount: toAccount!,
+        date: selectedDate,
       );
-    });
-  }
 
-  String formatDate(DateTime d) {
-    return "${d.day.toString().padLeft(2, '0')}/"
-        "${d.month.toString().padLeft(2, '0')}/"
-        "${d.year} | "
-        "${d.hour.toString().padLeft(2, '0')}:"
-        "${d.minute.toString().padLeft(2, '0')}";
+      Navigator.pop(context, expense);
+      return;
+    }
+
+    if (selectedCategory == null || fromAccount == null) return;
+
+    final expense = Expense(
+      amount: amount,
+      category: selectedCategory!,
+      description: descriptionController.text,
+      type: type,
+      account: fromAccount!,
+      date: selectedDate,
+    );
+
+    Navigator.pop(context, expense);
   }
 
   @override
   Widget build(BuildContext context) {
+    final categories = type == "ingreso"
+        ? widget.incomeCategories
+        : widget.expenseCategories;
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Movimiento")),
+      appBar: AppBar(
+        title: const Text("Agregar movimiento"),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: ListView(
           children: [
-            DropdownButton<String>(
+            DropdownButtonFormField<String>(
               value: type,
-              isExpanded: true,
               items: const [
-                DropdownMenuItem(value: "gasto", child: Text("Gasto")),
                 DropdownMenuItem(value: "ingreso", child: Text("Ingreso")),
+                DropdownMenuItem(value: "egreso", child: Text("Egreso")),
+                DropdownMenuItem(value: "transferencia", child: Text("Transferencia")),
               ],
-              onChanged: (v) {
+              onChanged: (value) {
                 setState(() {
-                  type = v!;
-                  selectedCategory = currentCategories.first;
+                  type = value!;
+                  selectedCategory = null;
                 });
               },
+              decoration: const InputDecoration(labelText: "Tipo"),
             ),
 
             const SizedBox(height: 10),
@@ -126,15 +104,60 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
             const SizedBox(height: 10),
 
-            DropdownButton<String>(
-              value: selectedCategory,
-              isExpanded: true,
-              items: currentCategories
-                  .toSet()
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+            if (type != "transferencia")
+              DropdownButtonFormField<String>(
+                value: selectedCategory,
+                items: categories
+                    .toSet()
+                    .map((cat) => DropdownMenuItem(
+                          value: cat,
+                          child: Text(cat),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedCategory = value;
+                  });
+                },
+                decoration: const InputDecoration(labelText: "Categoría"),
+              ),
+
+            const SizedBox(height: 10),
+
+            DropdownButtonFormField<String>(
+              value: fromAccount,
+              items: widget.accounts
+                  .map((acc) => DropdownMenuItem(
+                        value: acc,
+                        child: Text(acc),
+                      ))
                   .toList(),
-              onChanged: (v) => setState(() => selectedCategory = v),
+              onChanged: (value) {
+                setState(() {
+                  fromAccount = value;
+                });
+              },
+              decoration: const InputDecoration(labelText: "Cuenta"),
             ),
+
+            const SizedBox(height: 10),
+
+            if (type == "transferencia")
+              DropdownButtonFormField<String>(
+                value: toAccount,
+                items: widget.accounts
+                    .map((acc) => DropdownMenuItem(
+                          value: acc,
+                          child: Text(acc),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  setState(() {
+                    toAccount = value;
+                  });
+                },
+                decoration: const InputDecoration(labelText: "A qué cuenta"),
+              ),
 
             const SizedBox(height: 10),
 
@@ -145,36 +168,64 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
             const SizedBox(height: 10),
 
-            DropdownButton<String>(
-              value: selectedAccount,
-              isExpanded: true,
-              items: widget.accounts
-                  .toSet()
-                  .map((a) => DropdownMenuItem(value: a, child: Text(a)))
-                  .toList(),
-              onChanged: (v) => setState(() => selectedAccount = v),
+            ListTile(
+              title: Text(
+                "Fecha: ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
+              ),
+              trailing: const Icon(Icons.calendar_today),
+              onTap: () async {
+                final date = await showDatePicker(
+                  context: context,
+                  initialDate: selectedDate,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2100),
+                );
+
+                if (date != null) {
+                  setState(() {
+                    selectedDate = DateTime(
+                      date.year,
+                      date.month,
+                      date.day,
+                      selectedDate.hour,
+                      selectedDate.minute,
+                    );
+                  });
+                }
+              },
             ),
 
-            const SizedBox(height: 15),
+            ListTile(
+              title: Text(
+                "Hora: ${selectedDate.hour}:${selectedDate.minute}",
+              ),
+              trailing: const Icon(Icons.access_time),
+              onTap: () async {
+                final time = await showTimePicker(
+                  context: context,
+                  initialTime: TimeOfDay.fromDateTime(selectedDate),
+                );
 
-            // 📅 FECHA Y HORA
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("Fecha: ${formatDate(selectedDateTime)}"),
-                ElevatedButton(
-                  onPressed: pickDateTime,
-                  child: const Text("Cambiar"),
-                )
-              ],
+                if (time != null) {
+                  setState(() {
+                    selectedDate = DateTime(
+                      selectedDate.year,
+                      selectedDate.month,
+                      selectedDate.day,
+                      time.hour,
+                      time.minute,
+                    );
+                  });
+                }
+              },
             ),
 
             const SizedBox(height: 20),
 
             ElevatedButton(
-              onPressed: save,
+              onPressed: saveExpense,
               child: const Text("Guardar"),
-            )
+            ),
           ],
         ),
       ),
