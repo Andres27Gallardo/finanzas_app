@@ -5,12 +5,14 @@ class AddExpenseScreen extends StatefulWidget {
   final List<String> incomeCategories;
   final List<String> expenseCategories;
   final List<String> accounts;
+  final String type;
 
   const AddExpenseScreen({
     super.key,
     required this.incomeCategories,
     required this.expenseCategories,
     required this.accounts,
+    required this.type,
   });
 
   @override
@@ -21,97 +23,50 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final TextEditingController amountController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
 
-  String type = "egreso";
   String? selectedCategory;
-  String? fromAccount;
-  String? toAccount;
+  String? selectedAccount;
+  String? selectedToAccount;
 
   DateTime selectedDate = DateTime.now();
 
-  void saveExpense() {
-    final double? amount = double.tryParse(amountController.text);
-
-    if (amount == null) return;
-
-    if (type == "transferencia") {
-      if (fromAccount == null || toAccount == null) return;
-
-      final expense = Expense(
-        amount: amount,
-        category: "Transferencia",
-        description: descriptionController.text,
-        type: "transferencia",
-        account: fromAccount!,
-        toAccount: toAccount!,
-        date: selectedDate,
-      );
-
-      Navigator.pop(context, expense);
-      return;
-    }
-
-    if (selectedCategory == null || fromAccount == null) return;
-
-    final expense = Expense(
-      amount: amount,
-      category: selectedCategory!,
-      description: descriptionController.text,
-      type: type,
-      account: fromAccount!,
-      date: selectedDate,
-    );
-
-    Navigator.pop(context, expense);
-  }
-
   @override
   Widget build(BuildContext context) {
-    final categories = type == "ingreso"
+    final categories = widget.type == "ingreso"
         ? widget.incomeCategories
         : widget.expenseCategories;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Agregar movimiento"),
+        title: Text(
+          widget.type == "transferencia"
+              ? "Transferencia"
+              : "Agregar ${widget.type}",
+        ),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: ListView(
+        child: Column(
           children: [
-            DropdownButtonFormField<String>(
-              value: type,
-              items: const [
-                DropdownMenuItem(value: "ingreso", child: Text("Ingreso")),
-                DropdownMenuItem(value: "egreso", child: Text("Egreso")),
-                DropdownMenuItem(value: "transferencia", child: Text("Transferencia")),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  type = value!;
-                  selectedCategory = null;
-                });
-              },
-              decoration: const InputDecoration(labelText: "Tipo"),
-            ),
-
-            const SizedBox(height: 10),
-
+            // 💰 MONTO
             TextField(
               controller: amountController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: "Monto"),
+              decoration: const InputDecoration(
+                labelText: "Monto",
+                border: OutlineInputBorder(),
+              ),
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 15),
 
-            if (type != "transferencia")
+            // 📂 CATEGORIA (NO PARA TRANSFERENCIA)
+            if (widget.type != "transferencia")
               DropdownButtonFormField<String>(
                 value: selectedCategory,
                 items: categories
-                    .toSet()
-                    .map((cat) => DropdownMenuItem(
-                          value: cat,
-                          child: Text(cat),
+                    .map((c) => DropdownMenuItem(
+                          value: c,
+                          child: Text(c),
                         ))
                     .toList(),
                 onChanged: (value) {
@@ -119,59 +74,75 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                     selectedCategory = value;
                   });
                 },
-                decoration: const InputDecoration(labelText: "Categoría"),
+                decoration: const InputDecoration(
+                  labelText: "Categoría",
+                  border: OutlineInputBorder(),
+                ),
               ),
 
-            const SizedBox(height: 10),
+            if (widget.type != "transferencia")
+              const SizedBox(height: 15),
 
+            // 📝 DESCRIPCIÓN
+            TextField(
+              controller: descriptionController,
+              decoration: const InputDecoration(
+                labelText: "Descripción",
+                border: OutlineInputBorder(),
+              ),
+            ),
+
+            const SizedBox(height: 15),
+
+            // 🏦 CUENTA ORIGEN
             DropdownButtonFormField<String>(
-              value: fromAccount,
+              value: selectedAccount,
               items: widget.accounts
-                  .map((acc) => DropdownMenuItem(
-                        value: acc,
-                        child: Text(acc),
+                  .map((a) => DropdownMenuItem(
+                        value: a,
+                        child: Text(a),
                       ))
                   .toList(),
               onChanged: (value) {
                 setState(() {
-                  fromAccount = value;
+                  selectedAccount = value;
                 });
               },
-              decoration: const InputDecoration(labelText: "Cuenta"),
+              decoration: const InputDecoration(
+                labelText: "Cuenta",
+                border: OutlineInputBorder(),
+              ),
             ),
 
-            const SizedBox(height: 10),
-
-            if (type == "transferencia")
+            // 🔁 CUENTA DESTINO SOLO EN TRANSFERENCIA
+            if (widget.type == "transferencia") ...[
+              const SizedBox(height: 15),
               DropdownButtonFormField<String>(
-                value: toAccount,
+                value: selectedToAccount,
                 items: widget.accounts
-                    .map((acc) => DropdownMenuItem(
-                          value: acc,
-                          child: Text(acc),
+                    .map((a) => DropdownMenuItem(
+                          value: a,
+                          child: Text(a),
                         ))
                     .toList(),
                 onChanged: (value) {
                   setState(() {
-                    toAccount = value;
+                    selectedToAccount = value;
                   });
                 },
-                decoration: const InputDecoration(labelText: "A qué cuenta"),
+                decoration: const InputDecoration(
+                  labelText: "Cuenta destino",
+                  border: OutlineInputBorder(),
+                ),
               ),
+            ],
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 15),
 
-            TextField(
-              controller: descriptionController,
-              decoration: const InputDecoration(labelText: "Descripción"),
-            ),
-
-            const SizedBox(height: 10),
-
+            // 📅 FECHA
             ListTile(
               title: Text(
-                "Fecha: ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
-              ),
+                  "Fecha: ${selectedDate.day}/${selectedDate.month}/${selectedDate.year} ${selectedDate.hour}:${selectedDate.minute.toString().padLeft(2, '0')}"),
               trailing: const Icon(Icons.calendar_today),
               onTap: () async {
                 final date = await showDatePicker(
@@ -195,35 +166,34 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               },
             ),
 
-            ListTile(
-              title: Text(
-                "Hora: ${selectedDate.hour}:${selectedDate.minute}",
-              ),
-              trailing: const Icon(Icons.access_time),
-              onTap: () async {
-                final time = await showTimePicker(
-                  context: context,
-                  initialTime: TimeOfDay.fromDateTime(selectedDate),
-                );
-
-                if (time != null) {
-                  setState(() {
-                    selectedDate = DateTime(
-                      selectedDate.year,
-                      selectedDate.month,
-                      selectedDate.day,
-                      time.hour,
-                      time.minute,
-                    );
-                  });
-                }
-              },
-            ),
-
             const SizedBox(height: 20),
 
+            // 💾 GUARDAR
             ElevatedButton(
-              onPressed: saveExpense,
+              onPressed: () {
+                final amount = double.tryParse(amountController.text);
+
+                if (amount == null || selectedAccount == null) return;
+
+                if (widget.type != "transferencia" &&
+                    selectedCategory == null) return;
+
+                if (widget.type == "transferencia" &&
+                    selectedToAccount == null) return;
+
+                Navigator.pop(
+                  context,
+                  Expense(
+                    type: widget.type,
+                    category: selectedCategory ?? "Transferencia",
+                    amount: amount,
+                    description: descriptionController.text,
+                    account: selectedAccount!,
+                    toAccount: selectedToAccount,
+                    date: selectedDate,
+                  ),
+                );
+              },
               child: const Text("Guardar"),
             ),
           ],

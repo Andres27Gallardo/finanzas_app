@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 import '../models/expense.dart';
 import 'add_expense_screen.dart';
 import 'add_category_screen.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,179 +14,149 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Expense> expenses = [];
 
-  List<String> incomeCategories = ["Salario", "Negocio"];
-  List<String> expenseCategories = ["Comida", "Transporte"];
+  List<String> incomeCategories = ["Salario"];
+  List<String> expenseCategories = ["Comida"];
+  List<String> accounts = ["Efectivo"];
 
-  List<String> accounts = ["Banco", "Efectivo"];
-
-  double get totalIngresos =>
-      expenses.where((e) => e.type == "ingreso").fold(0, (sum, e) => sum + e.amount);
-
-  double get totalEgresos =>
-      expenses.where((e) => e.type == "egreso").fold(0, (sum, e) => sum + e.amount);
-
-  double get total => totalIngresos - totalEgresos;
-
-  void addExpense(Expense expense) {
+  void addCategory(Map data) {
     setState(() {
-      expenses.add(expense);
-    });
-  }
-
-  void addCategory(String category, String type) {
-    setState(() {
-      if (type == "ingreso") {
-        incomeCategories.add(category);
-      } else {
-        expenseCategories.add(category);
+      if (data["type"] == "ingreso") {
+        incomeCategories.add(data["name"]);
+      } else if (data["type"] == "egreso") {
+        expenseCategories.add(data["name"]);
+      } else if (data["type"] == "cuenta") {
+        accounts.add(data["name"]);
       }
     });
   }
 
+  double get totalIncome => expenses
+      .where((e) => e.type == "ingreso")
+      .fold(0, (sum, e) => sum + e.amount);
+
+  double get totalExpense => expenses
+      .where((e) => e.type == "egreso")
+      .fold(0, (sum, e) => sum + e.amount);
+
+  double get balance => totalIncome - totalExpense;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Mis Finanzas 💰")),
+      appBar: AppBar(title: const Text("Finanzas 💰")),
       body: Column(
         children: [
           const SizedBox(height: 20),
 
-          /// GRAFICA
+          // 📊 GRAFICA
           SizedBox(
             height: 200,
             child: PieChart(
               PieChartData(
                 sections: [
                   PieChartSectionData(
-                    value: totalIngresos,
+                    value: totalIncome,
                     color: Colors.green,
-                    title: totalIngresos == 0
-                        ? ""
-                        : "${(totalIngresos / (totalIngresos + totalEgresos) * 100).toStringAsFixed(1)}%",
+                    title: "Ingresos",
                   ),
                   PieChartSectionData(
-                    value: totalEgresos,
+                    value: totalExpense,
                     color: Colors.red,
-                    title: totalEgresos == 0
-                        ? ""
-                        : "${(totalEgresos / (totalIngresos + totalEgresos) * 100).toStringAsFixed(1)}%",
+                    title: "Egresos",
                   ),
                 ],
               ),
             ),
           ),
 
-          const SizedBox(height: 10),
-
-          /// CUADROS
+          // 📦 RESUMEN
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _box("Ingresos", totalIngresos, Colors.green),
-              _box("Total", total, Colors.grey),
-              _box("Egresos", totalEgresos, Colors.red),
+              _box("Ingresos", totalIncome, Colors.green),
+              _box("Total", balance, Colors.grey),
+              _box("Egresos", totalExpense, Colors.red),
             ],
           ),
 
-          const SizedBox(height: 10),
-
-          /// LISTA
+          // 📋 LISTA
           Expanded(
             child: ListView.builder(
               itemCount: expenses.length,
               itemBuilder: (context, index) {
                 final e = expenses[index];
 
+                String sign = "";
+                Color color = Colors.black;
+
+                if (e.type == "ingreso") {
+                  sign = "+";
+                  color = Colors.green;
+                } else if (e.type == "egreso") {
+                  sign = "-";
+                  color = Colors.red;
+                } else {
+                  sign = "⇄";
+                  color = Colors.blue;
+                }
+
                 return ListTile(
                   title: Text(e.category),
-                  subtitle: Text(e.description),
-                  trailing: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        "${e.type == "ingreso" ? "+" : "-"} \$${e.amount}",
-                        style: TextStyle(
-                          color: e.type == "ingreso"
-                              ? Colors.green
-                              : Colors.red,
-                        ),
-                      ),
-                      Text(
-                        "${e.date.day}/${e.date.month}/${e.date.year} | ${e.date.hour}:${e.date.minute}",
-                        style: const TextStyle(fontSize: 10),
-                      ),
-                      Text(
-                        e.type == "transferencia"
-                            ? "${e.account} → ${e.toAccount}"
-                            : e.account,
-                        style: const TextStyle(fontSize: 10),
-                      ),
-                    ],
+
+                  // 🔥 AQUÍ ESTÁ EL FIX REAL
+                  subtitle: Text(
+                    "${e.description}\n"
+                    "Banco: ${e.account}"
+                    "${e.toAccount != null ? " → ${e.toAccount}" : ""}\n"
+                    "${e.date.day}/${e.date.month}/${e.date.year} "
+                    "${e.date.hour}:${e.date.minute.toString().padLeft(2, '0')}",
+                  ),
+
+                  trailing: Text(
+                    "$sign \$${e.amount}",
+                    style: TextStyle(color: color),
                   ),
                 );
               },
             ),
-          ),
+          )
         ],
       ),
 
-      floatingActionButton: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      // 🔘 BOTONES
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 30),
-            child: FloatingActionButton(
-              backgroundColor: Colors.grey,
-              onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  builder: (_) => Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ListTile(
-                        title: const Text("Categoría ingreso"),
-                        onTap: () async {
-                          Navigator.pop(context);
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const AddCategoryScreen(),
-                            ),
-                          );
-                          if (result != null) {
-                            addCategory(result, "ingreso");
-                          }
-                        },
-                      ),
-                      ListTile(
-                        title: const Text("Categoría egreso"),
-                        onTap: () async {
-                          Navigator.pop(context);
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const AddCategoryScreen(),
-                            ),
-                          );
-                          if (result != null) {
-                            addCategory(result, "egreso");
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                );
-              },
-              child: const Icon(Icons.menu),
-            ),
+          // ⚙️ MENU
+          FloatingActionButton(
+            heroTag: "menu",
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AddCategoryScreen(),
+                ),
+              );
+
+              if (result != null) {
+                addCategory(result);
+              }
+            },
+            child: const Icon(Icons.menu),
           ),
 
+          const SizedBox(height: 10),
+
+          // 💰 INGRESO
           FloatingActionButton(
+            heroTag: "income",
+            backgroundColor: Colors.green,
             onPressed: () async {
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => AddExpenseScreen(
+                    type: "ingreso",
                     incomeCategories: incomeCategories,
                     expenseCategories: expenseCategories,
                     accounts: accounts,
@@ -195,10 +165,62 @@ class _HomeScreenState extends State<HomeScreen> {
               );
 
               if (result != null) {
-                addExpense(result);
+                setState(() => expenses.add(result));
               }
             },
-            child: const Icon(Icons.add),
+            child: const Icon(Icons.arrow_downward),
+          ),
+
+          const SizedBox(height: 10),
+
+          // 💸 EGRESO
+          FloatingActionButton(
+            heroTag: "expense",
+            backgroundColor: Colors.red,
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AddExpenseScreen(
+                    type: "egreso",
+                    incomeCategories: incomeCategories,
+                    expenseCategories: expenseCategories,
+                    accounts: accounts,
+                  ),
+                ),
+              );
+
+              if (result != null) {
+                setState(() => expenses.add(result));
+              }
+            },
+            child: const Icon(Icons.arrow_upward),
+          ),
+
+          const SizedBox(height: 10),
+
+          // 🔁 TRANSFERENCIA
+          FloatingActionButton(
+            heroTag: "transfer",
+            backgroundColor: Colors.blue,
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AddExpenseScreen(
+                    type: "transferencia",
+                    incomeCategories: incomeCategories,
+                    expenseCategories: expenseCategories,
+                    accounts: accounts,
+                  ),
+                ),
+              );
+
+              if (result != null) {
+                setState(() => expenses.add(result));
+              }
+            },
+            child: const Icon(Icons.swap_horiz),
           ),
         ],
       ),
@@ -207,7 +229,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _box(String title, double value, Color color) {
     return Container(
-      width: 100,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: color.withOpacity(0.2),
@@ -216,10 +237,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         children: [
           Text(title),
-          Text(
-            "\$${value.toStringAsFixed(2)}",
-            style: TextStyle(color: color, fontWeight: FontWeight.bold),
-          ),
+          Text("\$${value.toStringAsFixed(2)}"),
         ],
       ),
     );
